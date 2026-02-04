@@ -29,7 +29,7 @@ export const metadata: Metadata = {
   icons: {
     icon: [
       {
-        url: '/graduation-cap-svgrepo-com.svg',
+        url: '/graduation-cap-solid-svgrepo-com.svg',
         type: 'image/svg+xml',
       },
     ],
