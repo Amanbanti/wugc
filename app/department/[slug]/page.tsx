@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { use, useEffect, useState } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { motion } from 'framer-motion'
@@ -10,14 +10,16 @@ import { ArrowLeft, Search } from 'lucide-react'
 export default function DepartmentPage({
   params,
 }: {
-  params: { slug: string }
+  params: Promise<{ slug: string }>
 }) {
   const [students, setStudents] = useState<Student[]>([])
   const [filtered, setFiltered] = useState<Student[]>([])
   const [search, setSearch] = useState('')
   const [loading, setLoading] = useState(true)
 
-  const deptName = params.slug
+  const { slug } = use(params)
+
+  const deptName = slug
     .split('-')
     .map(w => w.charAt(0).toUpperCase() + w.slice(1))
     .join(' ')
@@ -101,7 +103,7 @@ export default function DepartmentPage({
       </section>
 
       {/* Students Grid */}
-      <section className="py-12 px-4 bg-background">
+      <section className="py-12 sm:py-16 px-4 bg-background">
         <div className="max-w-6xl mx-auto">
           {loading ? (
             <div className="flex items-center justify-center py-20">
@@ -114,7 +116,7 @@ export default function DepartmentPage({
               </p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-7 lg:gap-8">
               {filtered.map((student, i) => (
                 <motion.div
                   key={student.id}
@@ -125,43 +127,68 @@ export default function DepartmentPage({
                   <Link href={`/student/${student.id}`}>
                     <div className="group cursor-pointer">
                       {/* Movie Poster Style Card */}
-                      <div className="bg-card border border-border rounded-lg overflow-hidden hover:border-primary transition-all duration-300 hover:shadow-lg hover:shadow-primary/20">
+                      <div className="relative bg-card border border-border rounded-2xl overflow-hidden transition-all duration-300 hover:border-primary/60 hover:shadow-xl hover:shadow-black/40">
+                        {/* Decorative gradient wash + hover glow */}
+                        <div className="pointer-events-none absolute inset-0 opacity-90 bg-gradient-to-br from-primary/10 via-transparent to-accent/10" />
+                        <div className="pointer-events-none absolute -inset-24 opacity-0 group-hover:opacity-100 transition-opacity duration-500 bg-[radial-gradient(circle_at_30%_20%,rgba(255,255,255,0.14),transparent_45%)]" />
+
                         {/* Image Container */}
-                        <div className="relative h-72 sm:h-80 overflow-hidden bg-muted">
+                        <div className="relative h-80 sm:h-96 overflow-hidden bg-muted">
                           {student.image_url && (
                             <Image
                               src={student.image_url || "/placeholder.svg"}
                               alt={student.name}
                               fill
-                              className="object-cover group-hover:scale-105 transition-transform duration-500"
+                              sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
+                              className="object-cover group-hover:scale-[1.07] transition-transform duration-500"
                             />
                           )}
-                          {/* Photo Label */}
-                          <div className="absolute top-3 left-3 text-accent font-cinzel text-xs tracking-wider">
-                            [ Photo ]
+
+                          {/* Image overlays */}
+                          <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/80 via-black/10 to-black/15" />
+
+                          {/* Labels */}
+                          <div className="absolute top-4 left-4 flex items-center gap-2">
+                            <div className="rounded-full bg-black/50 backdrop-blur px-3 py-1 text-white/90 font-cinzel text-[10px] tracking-[0.28em] ring-1 ring-white/10">
+                              [ Photo ]
+                            </div>
+                          </div>
+
+                          <div className="absolute bottom-4 left-4 right-4">
+                            <div className="flex items-center justify-between gap-3">
+                              <div className="truncate text-white font-playfair text-xl sm:text-2xl font-bold drop-shadow-[0_10px_24px_rgba(0,0,0,0.85)]">
+                                {student.name}
+                              </div>
+                              <div className="shrink-0 rounded-full bg-white/10 text-white/90 px-3 py-1 text-xs ring-1 ring-white/15">
+                                Read →
+                              </div>
+                            </div>
                           </div>
                         </div>
 
                         {/* Info Section */}
-                        <div className="p-4 sm:p-5 bg-background/50 backdrop-blur-sm">
-                          {/* Name */}
-                          <h3 className="font-playfair text-lg sm:text-xl font-bold text-foreground mb-2 leading-tight">
-                            {student.name}
-                          </h3>
-
+                        <div className="relative p-5 sm:p-6 bg-background/50 backdrop-blur-sm">
                           {/* Department */}
-                          <p className="text-sm sm:text-base text-muted-foreground mb-3 font-inter">
-                            {student.department}
-                          </p>
+                          <div className="flex items-center justify-between gap-3 mb-3">
+                            <p className="text-sm sm:text-base text-muted-foreground font-inter truncate">
+                              {student.department}
+                            </p>
+                            <div className="text-accent font-cinzel text-[10px] sm:text-xs tracking-[0.28em]">
+                              [ Final Words ]
+                            </div>
+                          </div>
 
                           {/* Future Goal */}
-                          <p className="text-xs sm:text-sm text-foreground/70 mb-3 leading-relaxed line-clamp-2">
+                          <p className="text-sm sm:text-base text-foreground/75 leading-relaxed line-clamp-3">
                             <span className="text-accent font-semibold">Future Goal:</span> {student.future_goal}
                           </p>
 
-                          {/* Final Words Label */}
-                          <div className="text-accent font-cinzel text-xs tracking-wider group-hover:text-primary transition-colors">
-                            [ Read My Final Words ]
+                          {/* CTA */}
+                          <div className="mt-5 flex items-center justify-between">
+                            <div className="text-xs sm:text-sm text-foreground/60">Open profile</div>
+                            <div className="text-primary font-semibold transition-transform duration-300 group-hover:translate-x-1">
+                              →
+                            </div>
                           </div>
                         </div>
                       </div>
