@@ -2,13 +2,23 @@
 
 import React from "react"
 
-import { useState, useRef } from 'react'
+import { useMemo, useState, useRef } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { motion } from 'framer-motion'
 import { supabase, departments } from '@/lib/supabase'
 import { seedDummyData } from '@/app/actions/seed'
-import { ArrowLeft, Upload, Loader, Trash2, Zap } from 'lucide-react'
+import { ArrowLeft, Upload, Loader, Trash2, Zap, Search, X as ClearIcon } from 'lucide-react'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 
 const ADMIN_EMAIL = 'amanbanti2011@gmail.com'
 const ADMIN_PASSWORD = '123456'
@@ -30,18 +40,45 @@ export default function AdminPage() {
   const [uploading, setUploading] = useState(false)
   const [uploadMessage, setUploadMessage] = useState('')
   const [students, setStudents] = useState<any[]>([])
+  const [nameQuery, setNameQuery] = useState('')
   const [deleting, setDeleting] = useState<string | null>(null)
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false)
+  const [deleteTarget, setDeleteTarget] = useState<null | {
+    id: string
+    name: string
+    image_url: string
+  }>(null)
   const [seeding, setSeeding] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
+
+  const filteredStudents = useMemo(() => {
+    const q = nameQuery.trim().toLowerCase()
+    if (!q) return students
+    return students.filter(s => String(s?.name ?? '').toLowerCase().includes(q))
+  }, [students, nameQuery])
 
   // Fetch students
   React.useEffect(() => {
     if (isLoggedIn) {
       const fetchStudents = async () => {
-        const { data } = await supabase
+        const { data, error } = await supabase
           .from('students')
           .select('*')
           .order('created_at', { ascending: false })
+
+        if (error) {
+          const msg = `${error.message ?? ''} ${error.details ?? ''}`.toLowerCase()
+          if (error.code === '42P01' || msg.includes('does not exist') || msg.includes('not found')) {
+            setUploadMessage(
+              'Database table "students" not found in this Supabase project. Run scripts/setup-storage.sql (or scripts/setup-supabase.sql) in the Supabase SQL editor to create the table + policies.'
+            )
+          } else {
+            setUploadMessage('Error loading students from Supabase. Check your RLS policies and API settings.')
+          }
+          setStudents([])
+          return
+        }
+
         setStudents(data || [])
       }
       fetchStudents()
@@ -112,7 +149,7 @@ export default function AdminPage() {
         .delete()
         .eq('id', studentId)
 
-      setStudents(students.filter(s => s.id !== studentId))
+      setStudents(prev => prev.filter(s => s.id !== studentId))
       setUploadMessage('✓ Student deleted successfully!')
       setTimeout(() => setUploadMessage(''), 3000)
     } catch (error) {
@@ -121,6 +158,15 @@ export default function AdminPage() {
     } finally {
       setDeleting(null)
     }
+  }
+
+  const requestDelete = (student: any) => {
+    setDeleteTarget({
+      id: String(student.id),
+      name: String(student.name ?? 'this student'),
+      image_url: String(student.image_url ?? ''),
+    })
+    setDeleteConfirmOpen(true)
   }
 
   // Submit Handler
@@ -178,7 +224,28 @@ export default function AdminPage() {
       setStudents(data || [])
     } catch (error) {
       console.error('Upload error:', error)
-      setUploadMessage('Error uploading student. Please try again.')
+      const message =
+        error && typeof error === 'object' && 'message' in error
+          ? String((error as any).message)
+          : String(error)
+
+      const normalized = message.toLowerCase()
+
+      if (normalized.includes('bucket not found')) {
+        setUploadMessage(
+          'Storage bucket "student-images" not found. Create it in Supabase Storage or run scripts/setup-storage.sql in the Supabase SQL editor.'
+        )
+      } else if (normalized.includes('new row violates row-level security') || normalized.includes('row-level security')) {
+        setUploadMessage(
+          'Upload blocked by Supabase Storage RLS policy. In Supabase: Storage → Policies, allow INSERT for bucket_id = "student-images" (or run scripts/setup-storage.sql / scripts/setup-supabase.sql to create the policies).'
+        )
+      } else if (normalized.includes('permission denied') || normalized.includes('unauthorized') || normalized.includes('forbidden')) {
+        setUploadMessage(
+          'Supabase rejected the request (permissions/RLS). Make sure your Storage and students table policies allow anon access, or implement auth and use an authenticated session.'
+        )
+      } else {
+        setUploadMessage('Error uploading student. Please try again.')
+      }
     } finally {
       setUploading(false)
     }
@@ -206,7 +273,7 @@ export default function AdminPage() {
                   value={email}
                   onChange={e => setEmail(e.target.value)}
                   className="w-full px-4 py-2 bg-background border border-border rounded-lg text-foreground focus:outline-none focus:border-primary transition-colors"
-                  placeholder="amanbanti2011@gmail.com"
+                  placeholder="example@gmail.com"
                 />
               </div>
 
@@ -233,9 +300,7 @@ export default function AdminPage() {
               </button>
             </form>
 
-            <p className="text-foreground/50 text-xs text-center mt-4">
-              Demo Credentials: amanbanti2011@gmail.com / 123456
-            </p>
+  
           </div>
         </motion.div>
       </main>
@@ -276,14 +341,7 @@ export default function AdminPage() {
               <h1 className="font-playfair text-4xl font-bold text-primary">
                 Add Student
               </h1>
-              <button
-                onClick={handleSeedData}
-                disabled={seeding}
-                className="px-4 py-2 bg-accent/10 text-accent hover:bg-accent/20 rounded-lg transition-colors disabled:opacity-50 flex items-center gap-2 text-sm font-semibold"
-              >
-                {seeding && <Loader size={16} className="animate-spin" />}
-                {seeding ? 'Seeding...' : 'Add Dummy Data'}
-              </button>
+       
             </div>
             <p className="text-foreground/60 mb-8">
               Upload a new graduating student to the showcase
@@ -430,10 +488,37 @@ export default function AdminPage() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6 }}
           >
-            Manage Students ({students.length})
+            Manage Students ({filteredStudents.length})
           </motion.h2>
 
-          {students.length === 0 ? (
+          <div className="mb-6">
+            <div className="relative max-w-md">
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground" size={18} />
+              <input
+                value={nameQuery}
+                onChange={e => setNameQuery(e.target.value)}
+                placeholder="Search by student name..."
+                className="w-full pl-11 pr-10 py-3 bg-card border border-border rounded-xl text-foreground placeholder-muted-foreground focus:outline-none focus:border-primary transition-colors"
+              />
+              {nameQuery.trim().length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setNameQuery('')}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-foreground/60 hover:text-foreground transition-colors"
+                  aria-label="Clear search"
+                >
+                  <ClearIcon size={18} />
+                </button>
+              )}
+            </div>
+            {nameQuery.trim().length > 0 && (
+              <p className="mt-2 text-sm text-foreground/60">
+                Showing {filteredStudents.length} of {students.length}
+              </p>
+            )}
+          </div>
+
+          {filteredStudents.length === 0 ? (
             <p className="text-foreground/60 text-center py-8">No students added yet</p>
           ) : (
             <div className="overflow-x-auto">
@@ -447,14 +532,14 @@ export default function AdminPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {students.map((student) => (
+                  {filteredStudents.map((student) => (
                     <tr key={student.id} className="border-b border-border hover:bg-card/50 transition-colors">
                       <td className="py-4 px-4 text-foreground">{student.name}</td>
                       <td className="py-4 px-4 text-foreground">{student.department}</td>
                       <td className="py-4 px-4 text-foreground/80">{student.future_goal}</td>
                       <td className="py-4 px-4">
                         <button
-                          onClick={() => handleDelete(student.id, student.image_url)}
+                          onClick={() => requestDelete(student)}
                           disabled={deleting === student.id}
                           className="px-4 py-2 bg-destructive/10 text-destructive hover:bg-destructive/20 rounded-lg transition-colors disabled:opacity-50 flex items-center gap-2"
                         >
@@ -474,6 +559,44 @@ export default function AdminPage() {
           )}
         </div>
       </section>
+
+      <AlertDialog
+        open={deleteConfirmOpen}
+        onOpenChange={open => {
+          setDeleteConfirmOpen(open)
+          if (!open) setDeleteTarget(null)
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete student?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently remove{' '}
+              <span className="font-semibold text-foreground">{deleteTarget?.name ?? 'this student'}</span>{' '}
+              from the database. This action can’t be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel
+              disabled={Boolean(deleteTarget?.id && deleting === deleteTarget.id)}
+            >
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={Boolean(deleteTarget?.id && deleting === deleteTarget.id)}
+              onClick={async () => {
+                if (!deleteTarget) return
+                await handleDelete(deleteTarget.id, deleteTarget.image_url)
+                setDeleteConfirmOpen(false)
+                setDeleteTarget(null)
+              }}
+            >
+              {deleteTarget?.id && deleting === deleteTarget.id ? 'Deleting…' : 'Delete'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Footer */}
       <footer className="py-12 px-4 bg-card border-t border-border mt-12">
