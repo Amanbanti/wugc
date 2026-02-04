@@ -21,17 +21,21 @@ const cinzel = Cinzel({
   variable: "--font-cinzel",
 });
 
+
 export const metadata: Metadata = {
   title: 'Wolkite University - Graduating Class Showcase',
-  description: 'Premium graduation showcase celebrating Wolkite University graduating class students',
+  description:
+    'Premium graduation showcase celebrating Wolkite University graduating class students',
   icons: {
     icon: [
       {
         url: '/graduation-cap-svgrepo-com.svg',
-        media: '(prefers-color-scheme: light)',
-      }
+        type: 'image/svg+xml',
+      },
     ],
-    apple: '/apple-icon.png',
+    apple: {
+      url: '/apple-icon.png',
+    },
   },
 }
 
