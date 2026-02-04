@@ -16,6 +16,8 @@ const lastNames = [
   'Kebede', 'Kebene', 'Kidane', 'Kinfe', 'Korsa', 'Kumsa', 'Lema', 'Lemma'
 ]
 
+
+
 const futureGoals = [
   'Specialized Surgeon',
   'Healthcare Researcher',
