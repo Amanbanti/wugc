@@ -1,17 +1,19 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { use, useEffect, useState } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { motion, AnimatePresence } from 'framer-motion'
 import { supabase, type Student } from '@/lib/supabase'
-import { ArrowLeft, X } from 'lucide-react'
+import { ArrowLeft, Quote, Sparkles, Target, X } from 'lucide-react'
 
 export default function StudentPage({
   params,
 }: {
-  params: { id: string }
+  params: Promise<{ id: string }>
 }) {
+  const { id } = use(params)
+
   const [student, setStudent] = useState<Student | null>(null)
   const [loading, setLoading] = useState(true)
   const [showModal, setShowModal] = useState(false)
@@ -21,7 +23,7 @@ export default function StudentPage({
       const { data } = await supabase
         .from('students')
         .select('*')
-        .eq('id', params.id)
+        .eq('id', id)
         .single()
 
       if (data) {
@@ -31,7 +33,7 @@ export default function StudentPage({
     }
 
     fetchStudent()
-  }, [params.id])
+  }, [id])
 
   if (loading) {
     return (
@@ -78,58 +80,122 @@ export default function StudentPage({
       </header>
 
       {/* Profile Section */}
-      <section className="py-20 px-4 bg-gradient-to-b from-card to-background">
-        <div className="max-w-2xl mx-auto">
-          <div className="flex flex-col items-center">
-            {/* Student Photo */}
+      <section className="relative overflow-hidden py-12 sm:py-16 lg:py-20 px-4 bg-gradient-to-b from-card to-background">
+        {/* Decorative background */}
+        <div className="pointer-events-none absolute inset-0">
+          <div className="absolute -top-28 left-1/2 h-96 w-96 -translate-x-1/2 rounded-full bg-primary/15 blur-3xl" />
+          <div className="absolute -bottom-40 right-10 h-[28rem] w-[28rem] rounded-full bg-accent/10 blur-3xl" />
+          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(255,255,255,0.06),transparent_55%)]" />
+        </div>
+
+        <div className="relative max-w-6xl mx-auto">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-12 items-start">
+            {/* Left: Photo */}
             <motion.div
-              className="relative w-64 h-64 rounded-lg overflow-hidden mb-8 shadow-2xl border-4 border-primary/30"
-              initial={{ opacity: 0, y: 20 }}
+              className="lg:col-span-5"
+              initial={{ opacity: 0, y: 18 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6 }}
             >
-              {student.image_url && (
-                <Image
-                  src={student.image_url || "/placeholder.svg"}
-                  alt={student.name}
-                  fill
-                  className="object-cover hover:scale-105 transition-transform duration-500"
-                />
-              )}
-            </motion.div>
+              <div className="relative rounded-3xl overflow-hidden border border-primary/30 shadow-2xl shadow-black/50 bg-muted">
+                <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/5 to-black/10 z-10" />
+                <div className="relative aspect-[4/5] sm:aspect-[5/6] lg:aspect-[4/5]">
+                  <Image
+                    src={student.image_url || "/placeholder.svg"}
+                    alt={student.name}
+                    fill
+                    sizes="(max-width: 1024px) 100vw, 42vw"
+                    className="object-cover"
+                    priority
+                  />
+                </div>
 
-            {/* Student Info */}
-            <motion.div
-              className="text-center mb-8"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.2 }}
-            >
-              <h1 className="font-playfair text-5xl font-bold text-primary mb-4 hero-text-glow">
-                {student.name}
-              </h1>
-              
-              <div className="flex flex-col gap-2 text-foreground/80">
-                <p className="text-lg">
-                  <span className="font-semibold text-accent">Department:</span> {student.department}
-                </p>
-                <p className="text-lg">
-                  <span className="font-semibold text-accent">Future Goal:</span> {student.future_goal}
-                </p>
+                <div className="absolute top-5 left-5 z-20 inline-flex items-center gap-2 rounded-full bg-black/45 backdrop-blur px-4 py-2 ring-1 ring-white/10">
+                  <Sparkles className="h-4 w-4 text-white/90" />
+                  <span className="font-cinzel text-[10px] tracking-[0.28em] text-white/90">GRADUATING CLASS</span>
+                </div>
+
+                <div className="absolute bottom-5 left-5 right-5 z-20">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="inline-flex items-center rounded-full bg-white/10 px-3 py-1 text-white/90 text-xs ring-1 ring-white/15">
+                      {student.department}
+                    </span>
+                    {student.future_goal && (
+                      <span className="inline-flex items-center rounded-full bg-white/10 px-3 py-1 text-white/90 text-xs ring-1 ring-white/15">
+                        {student.future_goal}
+                      </span>
+                    )}
+                  </div>
+                </div>
               </div>
             </motion.div>
 
-            {/* Read My Final Words Button */}
-            <motion.button
-              onClick={() => setShowModal(true)}
-              className="px-8 py-3 bg-primary text-primary-foreground rounded-lg hover:bg-accent transition-all duration-300 transform hover:scale-105 font-playfair text-lg"
-              initial={{ opacity: 0, y: 20 }}
+            {/* Right: Details */}
+            <motion.div
+              className="lg:col-span-7"
+              initial={{ opacity: 0, y: 18 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.4 }}
-              whileHover={{ scale: 1.05 }}
+              transition={{ duration: 0.6, delay: 0.1 }}
             >
-              Read My Final Words
-            </motion.button>
+              <h1 className="font-playfair text-4xl sm:text-6xl lg:text-7xl font-bold text-primary hero-text-glow leading-tight">
+                {student.name}
+              </h1>
+
+              <div className="mt-6 flex flex-col gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="rounded-2xl border border-border bg-card/70 backdrop-blur p-5">
+                    <div className="text-xs font-cinzel tracking-[0.28em] text-foreground/60">DEPARTMENT</div>
+                    <div className="mt-2 text-lg sm:text-xl font-semibold text-foreground">
+                      {student.department}
+                    </div>
+                  </div>
+
+                  <div className="rounded-2xl border border-border bg-card/70 backdrop-blur p-5">
+                    <div className="flex items-center justify-between">
+                      <div className="text-xs font-cinzel tracking-[0.28em] text-foreground/60">FUTURE GOAL</div>
+                      <Target className="h-4 w-4 text-accent" />
+                    </div>
+                    <div className="mt-2 text-lg sm:text-xl font-semibold text-foreground">
+                      {student.future_goal || '—'}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="rounded-3xl border border-border bg-card/60 backdrop-blur p-6 sm:p-8 overflow-hidden relative">
+                  <div className="pointer-events-none absolute -top-24 -right-24 h-56 w-56 rounded-full bg-primary/10 blur-3xl" />
+                  <div className="flex items-center gap-3">
+                    <div className="inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-black/20 ring-1 ring-white/10">
+                      <Quote className="h-5 w-5 text-accent" />
+                    </div>
+                    <div>
+                      <div className="text-xs font-cinzel tracking-[0.28em] text-foreground/60">FINAL WORDS</div>
+                      <div className="text-foreground/85 text-sm mt-1">A message from the graduating class</div>
+                    </div>
+                  </div>
+
+                  <p className="mt-6 font-playfair text-xl sm:text-2xl leading-relaxed text-foreground/95">
+                    {student.final_words}
+                  </p>
+
+                  <div className="mt-8 flex flex-col sm:flex-row gap-3">
+                    <motion.button
+                      onClick={() => setShowModal(true)}
+                      className="px-8 py-3 bg-primary text-primary-foreground rounded-xl hover:bg-accent transition-all duration-300 transform hover:scale-[1.02] font-playfair text-lg shadow-lg shadow-black/30"
+                      whileHover={{ scale: 1.02 }}
+                    >
+                      Read in Fullscreen
+                    </motion.button>
+
+                    <Link
+                      href={`/department/${student.department.toLowerCase().replace(/\s+/g, '-')}`}
+                      className="px-8 py-3 border-2 border-primary/60 text-primary rounded-xl hover:bg-primary/10 transition-all duration-300 font-playfair text-lg text-center"
+                    >
+                      Explore {student.department}
+                    </Link>
+                  </div>
+                </div>
+              </div>
+            </motion.div>
           </div>
         </div>
       </section>
@@ -145,7 +211,7 @@ export default function StudentPage({
             onClick={() => setShowModal(false)}
           >
             <motion.div
-              className="bg-card border-2 border-primary rounded-lg max-w-2xl w-full max-h-96 overflow-y-auto p-8 relative"
+              className="bg-card border-2 border-primary/70 rounded-2xl max-w-3xl w-full max-h-[80svh] overflow-y-auto p-6 sm:p-10 relative shadow-2xl shadow-black/60"
               initial={{ opacity: 0, scale: 0.9, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.9, y: 20 }}
@@ -165,7 +231,7 @@ export default function StudentPage({
                 Read My Final Words
               </h2>
               
-              <p className="font-playfair text-xl leading-relaxed text-foreground/90">
+              <p className="font-playfair text-xl sm:text-2xl leading-relaxed text-foreground/95">
                 {student.final_words}
               </p>
             </motion.div>
