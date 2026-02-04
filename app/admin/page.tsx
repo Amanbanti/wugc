@@ -20,8 +20,8 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
 
-const ADMIN_EMAIL = 'amanbanti2011@gmail.com'
-const ADMIN_PASSWORD = '123456'
+const ADMIN_EMAIL = 'segniree@gmail.com'
+const ADMIN_PASSWORD = 'Segni_216'
 
 export default function AdminPage() {
   const [isLoggedIn, setIsLoggedIn] = useState(false)
