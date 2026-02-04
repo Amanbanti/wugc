@@ -1,31 +1,86 @@
+-- One-shot setup for this demo app (table + storage).
+-- Safe to re-run.
+
+-- UUID helper
+CREATE EXTENSION IF NOT EXISTS "pgcrypto";
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+
 -- Create students table
-CREATE TABLE IF NOT EXISTS students (
+CREATE TABLE IF NOT EXISTS public.students (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   name TEXT NOT NULL,
   department TEXT NOT NULL,
-  future_goal TEXT NOT NULL,
-  final_words TEXT NOT NULL,
+  future_goal TEXT,
+  final_words TEXT,
   image_url TEXT,
-  created_at TIMESTAMP DEFAULT NOW()
+  created_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+-- Enable RLS
+ALTER TABLE public.students ENABLE ROW LEVEL SECURITY;
+
+-- Policies (demo-friendly: allows anon reads/writes)
+DO $$
+BEGIN
+  CREATE POLICY "Students are viewable by everyone" ON public.students
+    FOR SELECT USING (true);
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;
+
+DO $$
+BEGIN
+  CREATE POLICY "Students can be inserted" ON public.students
+    FOR INSERT WITH CHECK (true);
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;
+
+DO $$
+BEGIN
+  CREATE POLICY "Students can be updated" ON public.students
+    FOR UPDATE USING (true);
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;
+
+DO $$
+BEGIN
+  CREATE POLICY "Students can be deleted" ON public.students
+    FOR DELETE USING (true);
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;
 
 -- Create storage bucket for student images
 INSERT INTO storage.buckets (id, name, public)
 VALUES ('student-images', 'student-images', true)
 ON CONFLICT (id) DO NOTHING;
 
--- Set up RLS policies for students table
-ALTER TABLE students ENABLE ROW LEVEL SECURITY;
+-- Storage policies for student-images bucket
+DO $$
+BEGIN
+  CREATE POLICY "Public Access" ON storage.objects
+    FOR SELECT USING (bucket_id = 'student-images');
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;
 
--- Allow public read access
-CREATE POLICY "Allow public read access"
-  ON students FOR SELECT
-  USING (true);
+DO $$
+BEGIN
+  CREATE POLICY "Allow uploads" ON storage.objects
+    FOR INSERT WITH CHECK (bucket_id = 'student-images');
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;
 
--- Allow authenticated users to insert
-CREATE POLICY "Allow authenticated insert"
-  ON students FOR INSERT
-  WITH CHECK (true);
+DO $$
+BEGIN
+  CREATE POLICY "Allow deletions" ON storage.objects
+    FOR DELETE USING (bucket_id = 'student-images');
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;
 
 -- Add some sample data
 INSERT INTO students (name, department, future_goal, final_words, image_url) VALUES
